@@ -1,0 +1,515 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Proyek Guru{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8 mt-2" x-data="uploadComponent()">
+    
+    <!-- Header Title -->
+    <div>
+        <a href="{{ url_for('submissions.index') }}" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center mb-1">
+            <i class="fa-solid fa-arrow-left mr-1.5"></i> Kembali ke Daftar Proyek
+        </a>
+        <h1 class="text-2xl font-black text-slate-900 tracking-tight">Upload Berkas Proyek UKG Guru</h1>
+        <p class="text-xs text-slate-500 mt-0.5">Unggah berkas pengerjaan proyek guru untuk dianalisis dan dinilai oleh AI Evaluator secara objektif.</p>
+    </div>
+
+    <!-- Banner Notifikasi Validasi Kustom -->
+    <div x-show="errorMessage" x-cloak 
+         class="p-4 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-semibold flex items-center justify-between shadow-xs">
+        <div class="flex items-center">
+            <i class="fa-solid fa-circle-exclamation text-rose-600 text-base mr-2.5"></i>
+            <span x-text="errorMessage"></span>
+        </div>
+        <button type="button" @click="errorMessage = ''" class="text-rose-400 hover:text-rose-600 ml-3">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+
+    <!-- Overlay Loading Evaluasi AI -->
+    <div x-show="isSubmitting" x-cloak 
+         class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl space-y-4">
+            <div class="w-16 h-16 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto text-2xl animate-spin">
+                <i class="fa-solid fa-circle-notch"></i>
+            </div>
+            <div>
+                <h3 class="text-base font-bold text-slate-900">Mengevaluasi Proyek Guru...</h3>
+                <p class="text-xs text-slate-500 mt-1">Parser sedang mengekstrak konten berkas (gambar/dokumen/kode) dan AI Evaluator sedang menilai bukti kriteria UKG.</p>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                <div class="bg-indigo-600 h-1.5 rounded-full animate-pulse w-3/4"></div>
+            </div>
+            <p class="text-[11px] text-slate-400 italic">Mohon tunggu beberapa detik...</p>
+        </div>
+    </div>
+
+    <!-- FORM UPLOAD -->
+    <form id="uploadFormElement" method="POST" action="{{ url_for('submissions.upload') }}" enctype="multipart/form-data" @submit="handleFormSubmit($event)" class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 sm:p-8 space-y-6">
+        
+        <!-- Langkah 1: Pilih Guru -->
+        <div>
+            <label for="teacher_id" class="block text-xs font-semibold text-slate-700 mb-1.5">
+                <span class="inline-flex w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold items-center justify-center mr-1.5">1</span>
+                Pilih Guru yang Dinilai <span class="text-rose-500">*</span>
+            </label>
+            <select id="teacher_id" name="teacher_id" x-model="selectedTeacherId" @change="onTeacherChange()"
+                    class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                <option value="">-- Pilih Nama Guru --</option>
+                {% for t in teachers %}
+                    <option value="{{ t.id }}" {% if request.args.get('teacher_id') == (t.id|string) %}selected{% endif %}>
+                        {{ t.name }} (NIP: {{ t.nip }}) - {{ t.school_origin }} [{{ t.grade_level }}]
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- PANEL BERKAS YANG SUDAH DI-UPLOAD OLEH GURU TERPILIH (JIKA ADA) -->
+        <div x-show="existingSubmissions.length > 0" x-cloak x-transition
+             class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-800 flex items-center">
+                    <i class="fa-solid fa-folder-open text-indigo-600 mr-2 text-sm"></i>
+                    Berkas Proyek yang Sudah Pernah Diunggah untuk Guru Ini (<span x-text="existingSubmissions.length"></span> berkas)
+                </span>
+                <span class="text-[10px] text-slate-400 font-medium">Riwayat Penilaian Sebelumnya</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-slate-500 font-semibold uppercase text-[10px]">
+                            <th class="py-2 px-3">Materi UKG</th>
+                            <th class="py-2 px-3">Judul Proyek & Berkas</th>
+                            <th class="py-2 px-2 text-center">Waktu Upload</th>
+                            <th class="py-2 px-2 text-center">Nilai Akhir</th>
+                            <th class="py-2 px-2 text-center">Status</th>
+                            <th class="py-2 px-3 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 text-slate-700 bg-white">
+                        <template x-for="sub in existingSubmissions" :key="sub.id">
+                            <tr class="hover:bg-slate-50">
+                                <td class="py-2 px-3 font-semibold text-slate-900">
+                                    <div x-text="sub.material_title"></div>
+                                    <div class="text-[10px] text-indigo-600 font-bold" x-text="sub.semester"></div>
+                                </td>
+                                <td class="py-2 px-3">
+                                    <div class="font-medium text-slate-800" x-text="sub.project_title"></div>
+                                    <div class="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                        <i class="fa-solid fa-paperclip"></i>
+                                        <span x-text="sub.filename"></span>
+                                        <span x-text="'(' + sub.filesize + ')'"></span>
+                                    </div>
+                                </td>
+                                <td class="py-2 px-2 text-center whitespace-nowrap text-slate-500 text-[11px]" x-text="sub.created_at"></td>
+                                <td class="py-2 px-2 text-center font-bold" x-text="sub.final_score !== null ? Number(sub.final_score).toFixed(2) : '-'"></td>
+                                <td class="py-2 px-2 text-center">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                                          :class="sub.status_badge_class" x-text="sub.status_label"></span>
+                                </td>
+                                <td class="py-2 px-3 text-right whitespace-nowrap">
+                                    <a :href="sub.detail_url" class="text-indigo-600 hover:text-indigo-900 font-semibold text-xs">
+                                        Lihat Hasil &rarr;
+                                    </a>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Langkah 2: Pilih Materi UKG Dinamis -->
+        <div>
+            <label for="material_id" class="block text-xs font-semibold text-slate-700 mb-1.5">
+                <span class="inline-flex w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold items-center justify-center mr-1.5">2</span>
+                Pilih Materi / Kompetensi UKG yang Sedang Diuji <span class="text-rose-500">*</span>
+            </label>
+
+            <!-- Loading Spinner saat fetch -->
+            <div x-show="isLoadingMaterials" class="text-xs text-indigo-600 py-1.5 flex items-center">
+                <i class="fa-solid fa-spinner fa-spin mr-2"></i> Memuat materi wajib guru terpilih...
+            </div>
+
+            <!-- Select Material Asli (Diisi secara dinamis via JS) -->
+            <select id="material_id" name="material_id" @change="onMaterialSelected($event)"
+                    class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                <option value="">-- Pilih Guru Terlebih Dahulu --</option>
+            </select>
+
+            <!-- Card Info Rubrik Aktif untuk materi ini -->
+            <div x-show="currentRubricInfo && currentRubricInfo.has_active_rubric" x-cloak class="mt-3 p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 text-xs">
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-indigo-900 flex items-center">
+                        <i class="fa-solid fa-circle-check text-emerald-600 mr-1.5"></i> 
+                        Rubrik Resmi: <span class="ml-1" x-text="currentRubricInfo?.rubric_title"></span>
+                    </span>
+                    <span class="text-[10px] font-semibold text-indigo-700 uppercase bg-indigo-100 px-2 py-0.5 rounded">Standar Aktif</span>
+                </div>
+                <p class="text-indigo-800 text-[11px] mt-1">
+                    Format file yang diizinkan untuk materi ini: <span class="font-mono font-bold" x-text="currentRubricInfo?.allowed_file_types"></span>
+                </p>
+            </div>
+            <div x-show="selectedMaterialId && currentRubricInfo && !currentRubricInfo.has_active_rubric" x-cloak class="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-semibold">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i> Materi ini belum memiliki Rubrik berstatus AKTIF. Mohon aktifkan rubrik terlebih dahulu di menu Rubrik.
+            </div>
+        </div>
+
+        <!-- Langkah 3: Informasi Proyek -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="sm:col-span-2">
+                <label for="project_title" class="block text-xs font-semibold text-slate-700 mb-1.5">
+                    <span class="inline-flex w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold items-center justify-center mr-1.5">3</span>
+                    Nama / Judul Berkas Proyek Guru <span class="text-rose-500">*</span>
+                </label>
+                <input type="text" id="project_title" name="project_title" x-model="projectTitle"
+                       placeholder="Contoh: Poster Gemar Membaca Sejak Dini - Amelia Paramma"
+                       class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            </div>
+
+            <div class="sm:col-span-2">
+                <label for="notes" class="block text-xs font-semibold text-slate-700 mb-1.5">Catatan Tambahan (Opsional)</label>
+                <textarea id="notes" name="notes" rows="2"
+                          placeholder="Catatan dari penguji atau kondisi berkas saat diterima..."
+                          class="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"></textarea>
+            </div>
+        </div>
+
+        <!-- Langkah 4: Unggah Berkas Proyek (Mendukung JPG, JPEG, PNG, dan format lainnya) -->
+        <div>
+            <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-xs font-semibold text-slate-700">
+                    <span class="inline-flex w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold items-center justify-center mr-1.5">4</span>
+                    Unggah Berkas Proyek Guru <span class="text-rose-500">*</span>
+                </label>
+                <span class="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded-full">
+                    <i class="fa-solid fa-check mr-1"></i> Mendukung JPG, JPEG, PNG
+                </span>
+            </div>
+
+            <!-- Upload Area Box -->
+            <div class="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-2xl p-6 text-center transition bg-slate-50/50">
+                <input type="file" id="project_file" name="project_file" @change="onFileSelected($event)"
+                    class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+
+                <p class="text-[11px] text-slate-500 mt-2">
+                    Mendukung <strong>semua format berkas proyek</strong> (Video .MP4/.MKV, Poster/Gambar .JPG/.PNG, Presentasi .PPTX, Dokumen .PDF/.DOCX, Spreadsheet .XLSX, Scratch .SB3, Arsip .ZIP/.RAR, dll.) dengan <strong>kapasitas maksimal 100 MB</strong>.
+                </p>
+
+                <!-- PREVIEW GAMBAR SECARA LANGSUNG JIKA FORMAT JPG / JPEG / PNG -->
+                <div x-show="isImageFile && imagePreviewUrl" x-cloak class="mt-4 p-4 rounded-xl bg-white border border-slate-200 text-left max-w-md mx-auto shadow-sm">
+                    <span class="text-[11px] font-bold text-slate-700 block mb-2 uppercase flex items-center">
+                        <i class="fa-solid fa-image text-indigo-600 mr-1.5"></i> Pratinjau Citra Poster (JPG/PNG):
+                    </span>
+                    <div class="w-full bg-slate-100 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center p-2">
+                        <img :src="imagePreviewUrl" alt="Pratinjau Desain Poster" class="max-h-56 max-w-full object-contain mx-auto rounded">
+                    </div>
+                    <div class="mt-2.5 flex items-center justify-between text-xs text-slate-600">
+                        <span class="font-bold text-slate-900 truncate max-w-[200px]" x-text="selectedFileName"></span>
+                        <span class="text-[11px] text-slate-500 font-mono" x-text="selectedFileSize"></span>
+                    </div>
+                </div>
+
+                <!-- PREVIEW NAMA FILE JIKA BUKAN GAMBAR -->
+                <div x-show="!isImageFile && selectedFileName" x-cloak class="mt-4 p-3 rounded-xl bg-white border border-slate-200 inline-flex items-center space-x-2 text-xs font-semibold text-slate-800 shadow-xs">
+                    <i class="fa-solid fa-file text-indigo-600"></i>
+                    <span x-text="selectedFileName"></span>
+                    <span class="text-slate-400 text-[11px]" x-text="'(' + selectedFileSize + ')'"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Opsi Eksekusi AI Langsung -->
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <input type="checkbox" id="run_ai_now" name="run_ai_now" value="1" checked
+                       class="rounded border-slate-300 text-indigo-600 w-4 h-4">
+                <label for="run_ai_now" class="text-xs font-bold text-slate-800 cursor-pointer">
+                    Jalankan Penilaian AI Evaluator Segera Setelah Berkas Terunggah
+                </label>
+            </div>
+            <span class="text-[10px] text-slate-400 hidden sm:block">Otomatis & Terstruktur</span>
+        </div>
+
+        <!-- Tombol Submit -->
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-end space-x-3">
+            <a href="{{ url_for('submissions.index') }}" class="px-5 py-2.5 border border-slate-300 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50">
+                Batal
+            </a>
+            <button type="submit" id="submitUploadBtn"
+                    class="px-7 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/25 transition flex items-center cursor-pointer">
+                <i class="fa-solid fa-paper-plane mr-2"></i> Konfirmasi & Upload Proyek
+            </button>
+        </div>
+
+    </form>
+
+    <!-- TABEL SELURUH BERKAS PROYEK TERAKHIR YANG DIUNGGAH DI SISTEM -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div class="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <div>
+                <h2 class="text-sm font-bold text-slate-900">Berkas Proyek yang Baru Saja Diunggah ke Sistem</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Daftar pengerjaan proyek guru yang baru masuk dan status penilaian AI</p>
+            </div>
+            <a href="{{ url_for('submissions.index') }}" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+                Lihat Semua &rarr;
+            </a>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                    <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 font-semibold uppercase text-[10px]">
+                        <th class="py-3 px-5">Nama Guru</th>
+                        <th class="py-3 px-4">Materi UKG</th>
+                        <th class="py-3 px-4">Nama Proyek & Berkas</th>
+                        <th class="py-3 px-3 text-center">Tanggal</th>
+                        <th class="py-3 px-3 text-center">Nilai</th>
+                        <th class="py-3 px-3 text-center">Status</th>
+                        <th class="py-3 px-5 text-right">Rincian</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% if recent_submissions %}
+                        {% for sub in recent_submissions %}
+                            <tr class="hover:bg-slate-50 transition">
+                                <td class="py-3 px-5">
+                                    <div class="font-bold text-slate-900">{{ sub.teacher.name }}</div>
+                                    <div class="text-[10px] text-slate-400">{{ sub.teacher.school_origin }}</div>
+                                </td>
+                                <td class="py-3 px-4 font-semibold text-slate-800">
+                                    <div>{{ sub.material.title }}</div>
+                                    <div class="text-[10px] text-indigo-600 font-bold mt-0.5">{{ sub.material.semester or 'Semester 1' }} &bull; {{ sub.material.class_level }}</div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="font-medium text-slate-900 truncate max-w-xs">{{ sub.project_title }}</div>
+                                    {% if sub.files %}
+                                        <div class="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                            <i class="fa-solid fa-paperclip"></i>
+                                            <span class="truncate max-w-[140px]">{{ sub.files[0].original_filename }}</span>
+                                            <span>({{ sub.files[0].human_size }})</span>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-3 text-center text-slate-500 whitespace-nowrap text-[11px]">
+                                    {{ sub.created_at|format_datetime }}
+                                </td>
+                                <td class="py-3 px-3 text-center font-bold">
+                                    {{ "%.2f"|format(sub.final_score) if sub.final_score is not none else '-' }}
+                                </td>
+                                <td class="py-3 px-3 text-center">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border {{ sub.status_badge_class }}">
+                                        {{ sub.status_label_id }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-5 text-right whitespace-nowrap">
+                                    <a href="{{ url_for('evaluations.detail', submission_id=sub.id) }}" class="text-indigo-600 hover:text-indigo-900 font-semibold text-xs">
+                                        Rincian &rarr;
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="py-8 text-center text-slate-400">
+                                Belum ada berkas proyek yang diunggah.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function uploadComponent() {
+        return {
+            selectedTeacherId: '{{ request.args.get("teacher_id", "") }}',
+            selectedMaterialId: '{{ request.args.get("material_id", "") }}',
+            teacherMaterials: [],
+            existingSubmissions: [],
+            currentRubricInfo: null,
+            isLoadingMaterials: false,
+            projectTitle: '',
+            selectedFileName: '',
+            selectedFileSize: '',
+            isImageFile: false,
+            imagePreviewUrl: null,
+            isSubmitting: false,
+            errorMessage: '',
+
+            init() {
+                if (this.selectedTeacherId) {
+                    this.fetchTeacherMaterials();
+                }
+            },
+
+            onTeacherChange() {
+                this.errorMessage = '';
+                this.fetchTeacherMaterials();
+            },
+
+            fetchTeacherMaterials() {
+                const matSelect = document.getElementById('material_id');
+                if (!this.selectedTeacherId) {
+                    this.teacherMaterials = [];
+                    this.existingSubmissions = [];
+                    this.currentRubricInfo = null;
+                    if (matSelect) {
+                        matSelect.innerHTML = '<option value="">-- Pilih Guru Terlebih Dahulu --</option>';
+                    }
+                    return;
+                }
+
+                this.isLoadingMaterials = true;
+                fetch(`/submissions/api/teacher-materials/${this.selectedTeacherId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        this.teacherMaterials = data.materials || [];
+                        this.existingSubmissions = data.existing_submissions || [];
+                        this.isLoadingMaterials = false;
+
+                        // Perbarui isi dropdown <select id="material_id"> secara murni DOM
+                        if (matSelect) {
+                            matSelect.innerHTML = '<option value="">-- Pilih Materi UKG --</option>';
+                            if (this.teacherMaterials.length === 0) {
+                                matSelect.innerHTML = '<option value="">(Belum ada materi wajib untuk guru ini)</option>';
+                            } else {
+                                this.teacherMaterials.forEach(m => {
+                                    const opt = document.createElement('option');
+                                    opt.value = m.id;
+                                    const sem = m.semester ? ` | ${m.semester}` : '';
+                                    opt.textContent = `${m.title} [${m.code}] (${m.grade_level} - ${m.class_level}${sem})`;
+                                    if (this.selectedMaterialId && m.id == this.selectedMaterialId) {
+                                        opt.selected = true;
+                                    }
+                                    matSelect.appendChild(opt);
+                                });
+                            }
+
+                            // Jika hanya ada 1 materi, auto-pilih
+                            if (this.teacherMaterials.length === 1) {
+                                matSelect.selectedIndex = 1;
+                                this.selectedMaterialId = this.teacherMaterials[0].id;
+                                this.currentRubricInfo = this.teacherMaterials[0];
+                            } else if (this.selectedMaterialId) {
+                                this.onMaterialSelected({ target: matSelect });
+                            }
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error fetching materials:', err);
+                        this.isLoadingMaterials = false;
+                    });
+            },
+
+            onMaterialSelected(event) {
+                this.errorMessage = '';
+                const val = event.target.value;
+                this.selectedMaterialId = val;
+                const mat = this.teacherMaterials.find(m => m.id == val);
+                this.currentRubricInfo = mat || null;
+            },
+
+            onFileSelected(event) {
+                this.errorMessage = '';
+                const file = event.target.files[0];
+                if (file) {
+                    // Cek kapasitas ukuran berkas (Maksimal 100 MB)
+                    const maxSizeBytes = 104857600; // 100 MB
+                    if (file.size > maxSizeBytes) {
+                        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+                        this.errorMessage = `Ukuran berkas (${sizeMB} MB) melebihi batas maksimal kapasitas sistem (100 MB). Mohon kompres berkas terlebih dahulu.`;
+                        event.target.value = '';
+                        this.selectedFileName = '';
+                        this.selectedFileSize = '';
+                        this.isImageFile = false;
+                        this.imagePreviewUrl = null;
+                        return;
+                    }
+
+                    this.selectedFileName = file.name;
+                    const sizeKB = (file.size / 1024).toFixed(1);
+                    this.selectedFileSize = sizeKB > 1024 ? (sizeKB / 1024).toFixed(2) + ' MB' : sizeKB + ' KB';
+                    
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+                        this.isImageFile = true;
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            this.imagePreviewUrl = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        this.isImageFile = false;
+                        this.imagePreviewUrl = null;
+                    }
+
+                    // Auto-fill judul proyek jika kosong
+                    if (!this.projectTitle.trim()) {
+                        const cleanName = file.name.replace(/\.[^/.]+$/, "");
+                        this.projectTitle = cleanName;
+                    }
+                }
+            },
+
+            handleFormSubmit(e) {
+                this.errorMessage = '';
+
+                // Validasi Langkah 1: Guru
+                if (!this.selectedTeacherId) {
+                    this.errorMessage = 'Mohon pilih Guru yang dinilai terlebih dahulu (Langkah 1).';
+                    e.preventDefault();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    return false;
+                }
+
+                // Validasi Langkah 2: Materi UKG
+                const matSelect = document.getElementById('material_id');
+                if (!matSelect || !matSelect.value) {
+                    this.errorMessage = 'Mohon pilih Materi / Kompetensi UKG yang sedang diuji (Langkah 2).';
+                    e.preventDefault();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    return false;
+                }
+
+                // Validasi Langkah 3: Judul Proyek
+                const titleInput = document.getElementById('project_title');
+                if (!titleInput || !titleInput.value.trim()) {
+                    this.errorMessage = 'Nama atau Judul berkas proyek wajib diisi (Langkah 3).';
+                    e.preventDefault();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    return false;
+                }
+
+                // Validasi Langkah 4: Berkas Proyek
+                const fileInput = document.getElementById('project_file');
+                if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+                    this.errorMessage = 'Mohon pilih berkas proyek yang akan diunggah (Langkah 4).';
+                    e.preventDefault();
+                    return false;
+                }
+
+                if (fileInput.files[0].size > 104857600) {
+                    this.errorMessage = 'Ukuran berkas melebihi batas maksimal kapasitas sistem (100 MB).';
+                    e.preventDefault();
+                    return false;
+                }
+
+                // Jika validasi lolos dan run_ai_now dicentang, aktifkan overlay animasi loading
+                const runAi = document.getElementById('run_ai_now').checked;
+                if (runAi) {
+                    this.isSubmitting = true;
+                }
+
+                return true;
+            }
+        }
+    }
+</script>
+{% endblock %}

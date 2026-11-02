@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Rubrik Penilaian UKG{% endblock %}
+
+{% block content %}
+<div class="space-y-6 mt-2">
+    
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight">Rubrik & Standar Penilaian UKG</h1>
+            <p class="text-sm text-slate-500 mt-1">Konfigurasi standar evaluasi objektif, bobot kriteria, syarat kelulusan, dan versi rubrik resmi.</p>
+        </div>
+        <div>
+            <a href="{{ url_for('rubrics.create') }}" class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-indigo-600/25 transition">
+                <i class="fa-solid fa-plus mr-2"></i> Buat Rubrik Baru
+            </a>
+        </div>
+    </div>
+
+    <!-- Grid Rubrik -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {% if rubrics %}
+            {% for r in rubrics %}
+                {% set active_v = r.active_version %}
+                <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs hover:shadow-md transition flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                {{ r.material.title }} ({{ r.material.grade_level }})
+                            </span>
+                            {% if active_v %}
+                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    {{ active_v.version_label }} AKTIF
+                                </span>
+                            {% else %}
+                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                    Draft (Belum Aktif)
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <h2 class="text-base font-bold text-slate-900 leading-snug">
+                            <a href="{{ url_for('rubrics.detail', rubric_id=r.id) }}" class="hover:text-indigo-600 transition">
+                                {{ r.title }}
+                            </a>
+                        </h2>
+
+                        <div class="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <div>
+                                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Passing Grade</span>
+                                <span class="font-bold text-slate-800">{{ r.passing_grade }} Poin</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block text-[10px] uppercase font-semibold">Format Berkas</span>
+                                <span class="font-bold text-slate-800 truncate block">{{ r.allowed_file_types }}</span>
+                            </div>
+                        </div>
+
+                        {% if active_v %}
+                            <div class="mt-3">
+                                <span class="text-[11px] font-semibold text-slate-400 block mb-1.5 uppercase">Kriteria Penilaian ({{ active_v.criteria|length }} Aspek - Total 100%):</span>
+                                <div class="space-y-1">
+                                    {% for c in active_v.criteria %}
+                                        <div class="flex items-center justify-between text-xs text-slate-700">
+                                            <span class="truncate pr-2">&bull; {{ c.name }} {% if c.is_mandatory %}<span class="text-rose-500 font-bold">*wajib</span>{% endif %}</span>
+                                            <span class="font-semibold text-indigo-600 whitespace-nowrap">{{ c.weight }}%</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="pt-4 mt-5 border-t border-slate-100 flex items-center justify-between">
+                        <span class="text-xs text-slate-400">
+                            {{ r.versions|length }} riwayat versi
+                        </span>
+                        <div class="flex items-center space-x-2">
+                            <form method="POST" action="{{ url_for('rubrics.delete', rubric_id=r.id) }}" 
+                                onsubmit="return confirm('Apakah Tuan yakin ingin menghapus rubrik {{ r.title }}? Seluruh kriteria dan versinya akan dihapus permanen.')" 
+                                class="inline">
+                                <button type="submit" class="px-2.5 py-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg text-xs font-semibold cursor-pointer transition">
+                                    <i class="fa-solid fa-trash-can mr-1"></i> Hapus
+                                </button>
+                            </form>
+                            <a href="{{ url_for('rubrics.detail', rubric_id=r.id) }}" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-lg text-xs transition">
+                                Rincian & Versi &rarr;
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-span-full py-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
+                <i class="fa-solid fa-scale-balanced text-4xl mb-3 text-slate-300"></i>
+                <h3 class="text-sm font-semibold text-slate-700">Belum Ada Rubrik Penilaian</h3>
+                <p class="text-xs text-slate-400 max-w-sm mx-auto mt-1">Rubrik penilaian diperlukan agar AI Evaluator dapat menilai bukti proyek guru secara objektif.</p>
+                <a href="{{ url_for('rubrics.create') }}" class="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold hover:bg-indigo-700">
+                    <i class="fa-solid fa-plus mr-1.5"></i> Buat Rubrik Sekarang
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

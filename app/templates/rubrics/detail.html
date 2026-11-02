@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Detail Rubrik - {{ rubric.title }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6 mt-2">
+    
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <a href="{{ url_for('rubrics.index') }}" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center mb-1">
+                <i class="fa-solid fa-arrow-left mr-1.5"></i> Kembali ke Daftar Rubrik
+            </a>
+            <h1 class="text-2xl font-black text-slate-900">{{ rubric.title }}</h1>
+            <p class="text-xs text-slate-500 mt-0.5">
+                Materi: <span class="font-bold text-slate-700">{{ rubric.material.title }}</span> &bull; 
+                Passing Grade: <span class="font-bold text-indigo-600">{{ rubric.passing_grade }} Poin</span>
+            </p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <a href="{{ url_for('rubrics.new_version', rubric_id=rubric.id) }}" 
+               class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/25 transition">
+                <i class="fa-solid fa-code-branch mr-1.5"></i> Buat Versi Baru
+            </a>
+        </div>
+    </div>
+
+    <!-- Active Version Card -->
+    {% set active_v = rubric.active_version %}
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-100 gap-3">
+            <div>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Standar Penilaian yang Berlaku</span>
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="text-lg font-black text-slate-900">Versi Aktif: {{ active_v.version_label if active_v else 'Tidak Ada Versi Aktif' }}</span>
+                    {% if active_v %}
+                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            AKTIF
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+            {% if active_v %}
+                <div class="text-xs text-slate-500">
+                    Disetujui: <span class="font-semibold text-slate-700">{{ active_v.approved_at|format_date if active_v.approved_at else '-' }}</span>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1">
+                <span class="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Instruksi Pengerjaan Proyek:</span>
+                <p class="text-slate-600 whitespace-pre-line leading-relaxed">{{ rubric.project_instructions }}</p>
+            </div>
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1">
+                <span class="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Kompetensi yang Diukur:</span>
+                <p class="text-slate-600 whitespace-pre-line leading-relaxed">{{ rubric.competencies_measured }}</p>
+            </div>
+        </div>
+
+        <!-- Tabel Kriteria Versi Aktif -->
+        {% if active_v %}
+            <div class="pt-2">
+                <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">Kriteria & Indikator Penilaian Resmi (Total Bobot: {{ active_v.total_weight }}%)</h3>
+                <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px]">
+                                <th class="py-3 px-4">Nama Aspek / Kriteria</th>
+                                <th class="py-3 px-4 text-center">Bobot</th>
+                                <th class="py-3 px-4">Indikator Bukti yang Dicari AI</th>
+                                <th class="py-3 px-4 text-center">Sifat Kriteria</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-slate-700">
+                            {% for c in active_v.criteria %}
+                                <tr class="hover:bg-slate-50">
+                                    <td class="py-3 px-4 font-semibold text-slate-900">
+                                        {{ c.name }}
+                                        {% if c.description %}
+                                            <div class="text-[11px] text-slate-400 font-normal mt-0.5">{{ c.description }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-3 px-4 text-center font-bold text-indigo-700">
+                                        {{ c.weight }}%
+                                    </td>
+                                    <td class="py-3 px-4 text-slate-600 font-medium">
+                                        {{ c.evidence_indicators }}
+                                    </td>
+                                    <td class="py-3 px-4 text-center">
+                                        {% if c.is_mandatory %}
+                                            <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                                                Wajib (Min. {{ c.mandatory_min_score }})
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
+                                                Standar
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Riwayat Versi Rubrik (Imutabilitas Terjamin) -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div class="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <div>
+                <h2 class="text-sm font-bold text-slate-900">Riwayat Versi Rubrik (Version Control)</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Setiap perubahan kriteria tersimpan sebagai versi baru sehingga penilaian proyek lama tetap valid.</p>
+            </div>
+        </div>
+
+        <div class="divide-y divide-slate-100 text-xs">
+            {% for v in rubric.versions %}
+                <div class="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:bg-slate-50/80 transition">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-black text-slate-900">{{ v.version_label }}</span>
+                            {% if v.status == 'active' %}
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    Sedang Digunakan (Aktif)
+                                </span>
+                            {% elif v.status == 'archived' %}
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600">
+                                    Diarsipkan
+                                </span>
+                            {% else %}
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                                    Draft
+                                </span>
+                            {% endif %}
+                            <span class="text-slate-400 font-mono text-[11px]">&bull; {{ v.criteria|length }} kriteria ({{ v.total_weight }}%)</span>
+                        </div>
+                        <p class="text-slate-500 mt-1">{{ v.change_notes or 'Tidak ada catatan versi.' }}</p>
+                        <div class="text-[10px] text-slate-400 mt-1">
+                            Dibuat: {{ v.created_at|format_datetime }} &bull; Digunakan pada {{ v.submissions|length }} proyek guru
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        {% if v.status != 'active' %}
+                            <form method="POST" action="{{ url_for('rubrics.activate_version', rubric_id=rubric.id, version_id=v.id) }}">
+                                <button type="submit" onclick="return confirm('Apakah Anda yakin ingin mengaktifkan versi ini untuk penilaian resmi selanjutnya?')"
+                                        class="px-3 py-1.5 bg-white border border-slate-300 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-slate-700 font-semibold rounded-lg text-xs transition">
+                                    <i class="fa-solid fa-toggle-on mr-1"></i> Aktifkan Versi Ini
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

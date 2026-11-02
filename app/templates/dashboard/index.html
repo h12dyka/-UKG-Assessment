@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Utama{% endblock %}
+
+{% block content %}
+<div class="space-y-8 mt-2">
+
+    <!-- Header Title Section -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Ringkasan Evaluasi UKG</h1>
+            <p class="text-sm text-slate-500 mt-1">Pemantauan real-time status penilaian proyek guru berbasis kecerdasan buatan.</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <a href="{{ url_for('submissions.upload') }}" class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-indigo-600/25 transition">
+                <i class="fa-solid fa-cloud-arrow-up mr-2"></i> Upload Proyek Guru
+            </a>
+            <a href="{{ url_for('rubrics.index') }}" class="inline-flex items-center px-3.5 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-xl shadow-xs transition">
+                <i class="fa-solid fa-scale-balanced mr-2 text-indigo-600"></i> Kelola Rubrik
+            </a>
+        </div>
+    </div>
+
+    <!-- Semester Quick Summary Pills -->
+    <div class="flex flex-wrap items-center gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs text-xs">
+        <span class="font-bold text-slate-700 flex items-center">
+            <i class="fa-solid fa-calendar-week text-indigo-600 mr-2"></i> Periode Akademik:
+        </span>
+        <a href="{{ url_for('dashboard.index', semester='Semester 1') }}" 
+           class="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 font-semibold border border-blue-200 flex items-center gap-1.5 transition {{ 'ring-2 ring-blue-500' if semester_filter == 'Semester 1' else '' }}">
+            <i class="fa-solid fa-folder-closed text-blue-600"></i> Semester 1 (Ganjil): <strong class="font-mono text-sm ml-1">{{ semester_1_count }}</strong> Proyek
+        </a>
+        <a href="{{ url_for('dashboard.index', semester='Semester 2') }}" 
+           class="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-800 font-semibold border border-purple-200 flex items-center gap-1.5 transition {{ 'ring-2 ring-purple-500' if semester_filter == 'Semester 2' else '' }}">
+            <i class="fa-solid fa-folder-closed text-purple-600"></i> Semester 2 (Genap): <strong class="font-mono text-sm ml-1">{{ semester_2_count }}</strong> Proyek
+        </a>
+        {% if semester_filter %}
+            <a href="{{ url_for('dashboard.index') }}" class="text-[11px] text-slate-400 hover:text-rose-600 font-medium ml-auto flex items-center">
+                <i class="fa-solid fa-xmark mr-1"></i> Reset Filter Semester
+            </a>
+        {% endif %}
+    </div>
+
+    <!-- 6 Metric Cards Grid (Real Database Counts) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        
+        <!-- Total Guru -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Guru</span>
+                <span class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-users"></i>
+                </span>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl font-black text-slate-900">{{ total_teachers }}</div>
+                <div class="text-xs text-slate-500 mt-0.5">Guru terdaftar aktif</div>
+            </div>
+        </div>
+
+        <!-- Total Proyek Terunggah -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Proyek</span>
+                <span class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-folder-open"></i>
+                </span>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl font-black text-slate-900">{{ total_submissions }}</div>
+                <div class="text-xs text-slate-500 mt-0.5">Berkas masuk sistem</div>
+            </div>
+        </div>
+
+        <!-- Sedang Dianalisis AI -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Proses AI</span>
+                <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm {% if under_review > 0 %}animate-pulse{% endif %}">
+                    <i class="fa-solid fa-microchip"></i>
+                </span>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl font-black text-indigo-600">{{ under_review }}</div>
+                <div class="text-xs text-indigo-500 font-medium mt-0.5">Sedang dinilai evaluator</div>
+            </div>
+        </div>
+
+        <!-- Lulus UKG -->
+        <div class="bg-white p-5 rounded-2xl border border-emerald-100 bg-emerald-50/20 shadow-xs hover:shadow-md transition">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-emerald-800 uppercase tracking-wider">Lulus UKG</span>
+                <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-circle-check"></i>
+                </span>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl font-black text-emerald-700">{{ passed_count }}</div>
+                <div class="text-xs text-emerald-600 mt-0.5">Memenuhi standar rubrik</div>
+            </div>
+        </div>
+
+        <!-- Belum Lulus -->
+        <div class="bg-white p-5 rounded-2xl border border-rose-100 bg-rose-50/20 shadow-xs hover:shadow-md transition">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-rose-800 uppercase tracking-wider">Belum Lulus</span>
+                <span class="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-circle-xmark"></i>
+                </span>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl font-black text-rose-600">{{ not_passed_count }}</div>
+                <div class="text-xs text-rose-500 mt-0.5">Belum capai passing grade</div>
+            </div>
+        </div>
+
+        <!-- Perlu Ditinjau Admin -->
+        <div class="bg-white p-5 rounded-2xl border border-amber-200 bg-amber-50/30 shadow-xs hover:shadow-md transition">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-amber-900 uppercase tracking-wider">Tinjau Admin</span>
+                <span class="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </span>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl font-black text-amber-700">{{ pending_admin }}</div>
+                <div class="text-xs text-amber-600 mt-0.5">Butuh keputusan verifikasi</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Analytics Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Chart: Distribusi Hasil Kelulusan -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+            <h2 class="text-sm font-bold text-slate-800 mb-1 flex items-center">
+                <i class="fa-solid fa-chart-pie text-indigo-500 mr-2"></i> Proporsi Hasil Penilaian
+            </h2>
+            <p class="text-xs text-slate-400 mb-4">Distribusi kelulusan seluruh proyek guru</p>
+            <div class="h-56 relative flex items-center justify-center">
+                <canvas id="resultChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart: Distribusi Jenjang Sekolah -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs lg:col-span-2">
+            <h2 class="text-sm font-bold text-slate-800 mb-1 flex items-center">
+                <i class="fa-solid fa-chart-simple text-indigo-500 mr-2"></i> Sebaran Guru per Jenjang Pendidikan
+            </h2>
+            <p class="text-xs text-slate-400 mb-4">Jumlah guru yang mengikuti UKG berdasarkan jenjang sekolah (SD, SMP, SMA, SMK)</p>
+            <div class="h-56">
+                <canvas id="gradeChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Table Section: Proyek Terbaru -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        
+        <!-- Table Header & Filter Bar -->
+        <div class="p-5 border-b border-slate-200/80 bg-slate-50/50 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h2 class="text-base font-bold text-slate-900">Proyek Guru Terbaru</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Daftar pengerjaan proyek guru yang diunggah dan hasil evaluasi AI</p>
+            </div>
+
+            <form method="GET" action="{{ url_for('dashboard.index') }}" class="flex flex-wrap items-center gap-2.5">
+                <!-- Search Input -->
+                <div class="relative">
+                    <input type="text" name="q" value="{{ search_query }}" placeholder="Cari nama / NIP / proyek..."
+                           class="pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                    <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                </div>
+
+                <!-- Status Filter -->
+                <select name="status" class="py-1.5 px-3 text-xs bg-white border border-slate-300 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    <option value="">Semua Status</option>
+                    <option value="passed" {% if status_filter == 'passed' %}selected{% endif %}>Lulus</option>
+                    <option value="not_passed" {% if status_filter == 'not_passed' %}selected{% endif %}>Belum Lulus</option>
+                    <option value="pending_admin_review" {% if status_filter == 'pending_admin_review' %}selected{% endif %}>Perlu Ditinjau Admin</option>
+                    <option value="under_ai_review" {% if status_filter == 'under_ai_review' %}selected{% endif %}>Sedang Dianalisis AI</option>
+                    <option value="uploaded" {% if status_filter == 'uploaded' %}selected{% endif %}>Berkas Terunggah</option>
+                    <option value="failed_processing" {% if status_filter == 'failed_processing' %}selected{% endif %}>Gagal Teknis</option>
+                </select>
+
+                <!-- Semester Filter -->
+                <select name="semester" class="py-1.5 px-3 text-xs bg-white border border-slate-300 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    <option value="">Semua Semester</option>
+                    <option value="Semester 1" {% if semester_filter == 'Semester 1' %}selected{% endif %}>Semester 1 (Ganjil)</option>
+                    <option value="Semester 2" {% if semester_filter == 'Semester 2' %}selected{% endif %}>Semester 2 (Genap)</option>
+                </select>
+
+                <!-- Material Filter -->
+                <select name="material" class="py-1.5 px-3 text-xs bg-white border border-slate-300 rounded-lg text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 max-w-[160px] truncate">
+                    <option value="">Semua Materi</option>
+                    {% for m in materials %}
+                        <option value="{{ m.id }}" {% if material_filter == (m.id|string) %}selected{% endif %}>{{ m.title }}</option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium rounded-lg transition">
+                    Filter
+                </button>
+                {% if search_query or status_filter or material_filter or semester_filter %}
+                    <a href="{{ url_for('dashboard.index') }}" class="text-xs text-rose-600 hover:text-rose-800 font-medium self-center">
+                        Reset
+                    </a>
+                {% endif %}
+            </form>
+        </div>
+
+        <!-- Table View -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                    <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider">
+                        <th class="py-3.5 px-5">Nama Guru & Sekolah</th>
+                        <th class="py-3.5 px-4">Jenjang & Kelas</th>
+                        <th class="py-3.5 px-4">Materi UKG</th>
+                        <th class="py-3.5 px-4">Nama Proyek</th>
+                        <th class="py-3.5 px-4">Tanggal Upload</th>
+                        <th class="py-3.5 px-4 text-center">Nilai Akhir</th>
+                        <th class="py-3.5 px-4 text-center">Status</th>
+                        <th class="py-3.5 px-5 text-right">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% if submissions %}
+                        {% for sub in submissions %}
+                            <tr class="hover:bg-slate-50/80 transition">
+                                <!-- Guru -->
+                                <td class="py-3.5 px-5">
+                                    <div class="font-semibold text-slate-900">{{ sub.teacher.name }}</div>
+                                    <div class="text-[11px] text-slate-400 mt-0.5">NIP: {{ sub.teacher.nip }} &bull; {{ sub.teacher.school_origin }}</div>
+                                </td>
+                                <!-- Jenjang -->
+                                <td class="py-3.5 px-4">
+                                    <span class="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700">
+                                        {{ sub.teacher.grade_level }}
+                                    </span>
+                                    <div class="text-[11px] text-slate-400 mt-0.5">{{ sub.teacher.classes_taught }}</div>
+                                </td>
+                                <!-- Materi -->
+                                <td class="py-3.5 px-4">
+                                    <div class="font-medium text-slate-900">{{ sub.material.title }}</div>
+                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                        <span class="text-[10px] font-bold px-1.5 py-0.2 rounded {{ 'bg-blue-50 text-blue-700 border border-blue-200' if sub.material.semester == 'Semester 1' else 'bg-purple-50 text-purple-700 border border-purple-200' }}">
+                                            {{ sub.material.semester or 'Semester 1' }}
+                                        </span>
+                                        <span class="text-[11px] text-indigo-600 font-mono">{{ sub.material.code }}</span>
+                                    </div>
+                                </td>
+                                <!-- Proyek -->
+                                <td class="py-3.5 px-4">
+                                    <div class="font-medium text-slate-800 truncate max-w-xs" title="{{ sub.project_title }}">
+                                        {{ sub.project_title }}
+                                    </div>
+                                    {% if sub.files %}
+                                        <div class="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                            <i class="fa-solid fa-paperclip"></i>
+                                            <span class="truncate max-w-[150px]">{{ sub.files[0].original_filename }}</span>
+                                            <span>({{ sub.files[0].human_size }})</span>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <!-- Tanggal -->
+                                <td class="py-3.5 px-4 whitespace-nowrap text-slate-500">
+                                    {{ sub.created_at|format_datetime }}
+                                    <div class="text-[10px] text-slate-400">Percobaan ke-{{ sub.attempt_number }}</div>
+                                </td>
+                                <!-- Nilai Akhir -->
+                                <td class="py-3.5 px-4 text-center whitespace-nowrap">
+                                    {% if sub.final_score is not none %}
+                                        <span class="text-sm font-black {% if sub.status == 'passed' %}text-emerald-600{% elif sub.status == 'not_passed' %}text-rose-600{% else %}text-amber-600{% endif %}">
+                                            {{ "%.2f"|format(sub.final_score) }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-slate-400 italic">-</span>
+                                    {% endif %}
+                                </td>
+                                <!-- Status -->
+                                <td class="py-3.5 px-4 text-center whitespace-nowrap">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border {{ sub.status_badge_class }}">
+                                        {% if sub.status == 'passed' %}
+                                            <i class="fa-solid fa-check mr-1 text-emerald-600"></i>
+                                        {% elif sub.status == 'not_passed' %}
+                                            <i class="fa-solid fa-xmark mr-1 text-rose-600"></i>
+                                        {% elif sub.status == 'under_ai_review' %}
+                                            <i class="fa-solid fa-spinner fa-spin mr-1"></i>
+                                        {% elif sub.status == 'pending_admin_review' %}
+                                            <i class="fa-solid fa-clock mr-1 text-amber-600"></i>
+                                        {% endif %}
+                                        {{ sub.status_label_id }}
+                                    </span>
+                                </td>
+                                <!-- Aksi -->
+                                <td class="py-3.5 px-5 text-right whitespace-nowrap">
+                                    <a href="{{ url_for('evaluations.detail', submission_id=sub.id) }}" 
+                                       class="inline-flex items-center px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-lg text-xs transition">
+                                        Rincian <i class="fa-solid fa-arrow-right ml-1.5"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <!-- Empty State -->
+                        <tr>
+                            <td colspan="8" class="py-12 text-center text-slate-400">
+                                <div class="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 text-2xl">
+                                    <i class="fa-solid fa-inbox"></i>
+                                </div>
+                                <h3 class="text-sm font-semibold text-slate-700">Belum Ada Proyek UKG</h3>
+                                <p class="text-xs text-slate-400 max-w-sm mx-auto mt-1">
+                                    {% if search_query or status_filter or material_filter %}
+                                        Tidak ditemukan proyek yang cocok dengan filter pencarian.
+                                    {% else %}
+                                        Belum ada berkas proyek guru yang diunggah ke dalam sistem. Silakan klik tombol di bawah untuk mengunggah proyek pertama.
+                                    {% endif %}
+                                </p>
+                                {% if not search_query and not status_filter and not material_filter %}
+                                    <a href="{{ url_for('submissions.upload') }}" class="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold hover:bg-indigo-700">
+                                        <i class="fa-solid fa-plus mr-1.5"></i> Upload Proyek Guru Sekarang
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Bar -->
+        {% if pagination and pagination.pages > 1 %}
+            <div class="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-500">
+                <div>
+                    Menampilkan halaman <span class="font-bold text-slate-700">{{ pagination.page }}</span> dari <span class="font-bold text-slate-700">{{ pagination.pages }}</span> (Total {{ pagination.total }} proyek)
+                </div>
+                <div class="flex items-center space-x-1">
+                    {% if pagination.has_prev %}
+                        <a href="{{ url_for('dashboard.index', page=pagination.prev_num, q=search_query, status=status_filter, material=material_filter) }}" class="px-2.5 py-1 bg-white border border-slate-300 rounded text-slate-700 hover:bg-slate-50">Sebelumnya</a>
+                    {% endif %}
+                    {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=1) %}
+                        {% if p %}
+                            {% if p == pagination.page %}
+                                <span class="px-2.5 py-1 bg-indigo-600 text-white rounded font-bold">{{ p }}</span>
+                            {% else %}
+                                <a href="{{ url_for('dashboard.index', page=p, q=search_query, status=status_filter, material=material_filter) }}" class="px-2.5 py-1 bg-white border border-slate-300 rounded text-slate-700 hover:bg-slate-50">{{ p }}</a>
+                            {% endif %}
+                        {% else %}
+                            <span class="px-1 text-slate-400">...</span>
+                        {% endif %}
+                    {% endfor %}
+                    {% if pagination.has_next %}
+                        <a href="{{ url_for('dashboard.index', page=pagination.next_num, q=search_query, status=status_filter, material=material_filter) }}" class="px-2.5 py-1 bg-white border border-slate-300 rounded text-slate-700 hover:bg-slate-50">Selanjutnya</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Inisialisasi Chart.js untuk Donut Distribusi Hasil
+    const ctxResult = document.getElementById('resultChart');
+    if (ctxResult) {
+        new Chart(ctxResult, {
+            type: 'doughnut',
+            data: {
+                labels: {{ result_labels|tojson }},
+                datasets: [{
+                    data: {{ result_counts|tojson }},
+                    backgroundColor: ['#10b981', '#f43f5e', '#f59e0b', '#6366f1'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 12, font: { size: 10 } }
+                    }
+                },
+                cutout: '68%'
+            }
+        });
+    }
+
+    // Inisialisasi Chart.js untuk Bar Sebaran Jenjang
+    const ctxGrade = document.getElementById('gradeChart');
+    if (ctxGrade) {
+        new Chart(ctxGrade, {
+            type: 'bar',
+            data: {
+                labels: {{ grade_labels|tojson }},
+                datasets: [{
+                    label: 'Jumlah Guru',
+                    data: {{ grade_counts|tojson }},
+                    backgroundColor: '#4f46e5',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1, font: { size: 10 } },
+                        grid: { color: '#f1f5f9' }
+                    },
+                    x: {
+                        ticks: { font: { size: 11 } },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

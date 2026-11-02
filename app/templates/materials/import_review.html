@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Tinjau Pembagian Modul Soal UKG{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6 mt-2">
+    
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <a href="{{ url_for('materials.import_pdf') }}" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center mb-1">
+                <i class="fa-solid fa-arrow-left mr-1.5"></i> Unggah Dokumen Lain
+            </a>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight">Hasil Telaah Modul per Tingkat Kelas</h1>
+            <p class="text-xs text-slate-500 mt-0.5">
+                Ditemukan <strong class="text-indigo-600">{{ total_modules }} Penugasan Kelas Berbeda</strong> dari berkas <span class="font-bold text-slate-800">{{ source_file }}</span>.
+            </p>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('materials.confirm_import') }}" class="space-y-6">
+        
+        <div class="grid grid-cols-1 gap-5">
+            {% for mod in modules %}
+                {% set loop_idx = loop.index0 %}
+                <div class="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 space-y-4 transition hover:border-indigo-300">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div class="flex items-center space-x-3">
+                            <input type="checkbox" name="selected_modules[]" value="{{ loop_idx }}" checked
+                                   class="w-4 h-4 rounded text-indigo-600 border-slate-300">
+                            <div>
+                                <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider block">Modul #{{ loop.index }}</span>
+                                <h2 class="text-base font-extrabold text-slate-900">{{ mod.class_level }} &bull; {{ mod.title }}</h2>
+                            </div>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            {{ mod.grade_level }}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                        <div>
+                            <label class="block font-semibold text-slate-600 mb-1">Kode Materi</label>
+                            <input type="text" name="code_{{ loop_idx }}" value="{{ mod.code }}" required
+                                   class="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-indigo-700">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block font-semibold text-slate-600 mb-1">Judul Penugasan</label>
+                            <input type="text" name="title_{{ loop_idx }}" value="{{ mod.title }}" required
+                                   class="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg font-semibold text-slate-800">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-600 mb-1">Tingkat & Kelas</label>
+                            <div class="flex space-x-1.5">
+                                <input type="text" name="grade_level_{{ loop_idx }}" value="{{ mod.grade_level }}" class="w-16 px-2 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-center font-bold">
+                                <input type="text" name="class_level_{{ loop_idx }}" value="{{ mod.class_level }}" class="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded-lg font-bold">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                        <div>
+                            <label class="block font-semibold text-slate-600 mb-1">Mata Pelajaran / Aplikasi</label>
+                            <input type="text" name="subject_{{ loop_idx }}" value="{{ mod.subject }}"
+                                   class="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-600 mb-1">Semester & T.A.</label>
+                            <div class="flex space-x-1.5">
+                                <input type="text" name="semester_{{ loop_idx }}" value="{{ mod.semester }}" class="w-full px-2 py-1.5 bg-slate-50 border border-slate-300 rounded-lg">
+                                <input type="text" name="academic_year_{{ loop_idx }}" value="{{ mod.academic_year }}" class="w-24 px-2 py-1.5 bg-slate-50 border border-slate-300 rounded-lg">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-slate-600 mb-1">Format Berkas Resmi</label>
+                            <input type="text" name="allowed_file_types_{{ loop_idx }}" value="{{ mod.allowed_file_types }}" required
+                                   class="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg font-bold text-emerald-700">
+                        </div>
+                    </div>
+
+                    <div class="text-xs">
+                        <label class="block font-semibold text-slate-600 mb-1">Rincian Instruksi Tugas</label>
+                        <textarea name="project_instructions_{{ loop_idx }}" rows="2"
+                                  class="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg font-mono text-[11px]">{{ mod.project_instructions }}</textarea>
+                    </div>
+
+                    <input type="hidden" name="description_{{ loop_idx }}" value="{{ mod.description }}">
+                    <input type="hidden" name="competencies_measured_{{ loop_idx }}" value="{{ mod.competencies_measured }}">
+                    <input type="hidden" name="passing_grade_{{ loop_idx }}" value="{{ mod.passing_grade }}">
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="sticky bottom-4 bg-white/95 backdrop-blur-xs border border-slate-300 p-4 rounded-2xl shadow-xl flex items-center justify-between">
+            <span class="text-xs text-slate-600">
+                Centang modul yang ingin disimpan. Modul yang sudah ada akan otomatis diperbarui.
+            </span>
+            <div class="flex items-center space-x-3">
+                <a href="{{ url_for('materials.import_pdf') }}" class="px-4 py-2 border border-slate-300 text-xs font-semibold rounded-xl text-slate-700 hover:bg-slate-50">
+                    Batal
+                </a>
+                <button type="submit" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center">
+                    <i class="fa-solid fa-cloud-arrow-up mr-2"></i> Simpan Seluruh Modul Terpilih ke Sistem
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

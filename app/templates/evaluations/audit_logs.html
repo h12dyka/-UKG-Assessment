@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Trail Log{% endblock %}
+
+{% block content %}
+<div class="space-y-6 mt-2">
+    
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight">Audit Trail & Riwayat Aktivitas</h1>
+            <p class="text-sm text-slate-500 mt-1">Jejak audit permanen setiap aksi upload, evaluasi AI, koreksi keputusan Admin, dan perubahan standar rubrik.</p>
+        </div>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+        <form method="GET" action="{{ url_for('evaluations.audit_logs') }}" class="flex flex-wrap items-center gap-3">
+            <div class="w-64">
+                <select name="action" class="w-full py-2 px-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    <option value="">Semua Aktivitas</option>
+                    <option value="PROJECT_UPLOAD" {% if action_filter == 'PROJECT_UPLOAD' %}selected{% endif %}>PROJECT_UPLOAD</option>
+                    <option value="AI_EVALUATION_COMPLETED" {% if action_filter == 'AI_EVALUATION_COMPLETED' %}selected{% endif %}>AI_EVALUATION_COMPLETED</option>
+                    <option value="ADMIN_APPROVAL" {% if action_filter == 'ADMIN_APPROVAL' %}selected{% endif %}>ADMIN_APPROVAL</option>
+                    <option value="ADMIN_OVERRIDE" {% if action_filter == 'ADMIN_OVERRIDE' %}selected{% endif %}>ADMIN_OVERRIDE</option>
+                    <option value="CREATE_RUBRIC" {% if action_filter == 'CREATE_RUBRIC' %}selected{% endif %}>CREATE_RUBRIC</option>
+                    <option value="ACTIVATE_RUBRIC_VERSION" {% if action_filter == 'ACTIVATE_RUBRIC_VERSION' %}selected{% endif %}>ACTIVATE_RUBRIC_VERSION</option>
+                    <option value="CREATE_TEACHER" {% if action_filter == 'CREATE_TEACHER' %}selected{% endif %}>CREATE_TEACHER</option>
+                    <option value="ADMIN_LOGIN" {% if action_filter == 'ADMIN_LOGIN' %}selected{% endif %}>ADMIN_LOGIN</option>
+                </select>
+            </div>
+            <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl transition">
+                Filter Log
+            </button>
+            {% if action_filter %}
+                <a href="{{ url_for('evaluations.audit_logs') }}" class="text-xs text-rose-600 hover:text-rose-800 font-medium">Reset</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Tabel Audit Logs -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                    <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider">
+                        <th class="py-3 px-5">Waktu Kejadian</th>
+                        <th class="py-3 px-4">Pengguna / Admin</th>
+                        <th class="py-3 px-4">Aksi Sistem</th>
+                        <th class="py-3 px-4">Entitas Terkait</th>
+                        <th class="py-3 px-4">Rincian Perubahan / Metadata</th>
+                        <th class="py-3 px-5 text-right">Alamat IP</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700 font-mono text-[11px]">
+                    {% if logs %}
+                        {% for log in logs %}
+                            <tr class="hover:bg-slate-50 transition">
+                                <td class="py-3 px-5 text-slate-500 whitespace-nowrap font-sans text-xs">
+                                    {{ log.created_at|format_datetime }}
+                                </td>
+                                <td class="py-3 px-4 font-sans font-semibold text-slate-900">
+                                    {{ log.user.name if log.user else 'Sistem Otomatis' }}
+                                </td>
+                                <td class="py-3 px-4 whitespace-nowrap">
+                                    <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold 
+                                        {% if 'OVERRIDE' in log.action %}bg-amber-100 text-amber-800 border border-amber-300
+                                        {% elif 'APPROVAL' in log.action or 'COMPLETED' in log.action %}bg-emerald-100 text-emerald-800 border border-emerald-300
+                                        {% elif 'CREATE' in log.action %}bg-blue-100 text-blue-800 border border-blue-300
+                                        {% else %}bg-slate-100 text-slate-700{% endif %}">
+                                        {{ log.action }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 font-sans text-slate-800">
+                                    {{ log.entity_type }} #{{ log.entity_id or '-' }}
+                                </td>
+                                <td class="py-3 px-4 text-slate-600 truncate max-w-md" title="{{ log.details }}">
+                                    {{ log.details or '-' }}
+                                </td>
+                                <td class="py-3 px-5 text-right text-slate-400 font-mono">
+                                    {{ log.ip_address or '127.0.0.1' }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="py-10 text-center text-slate-400 font-sans">
+                                Belum ada catatan jejak audit yang terekam.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if pagination and pagination.pages > 1 %}
+            <div class="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-500 font-sans">
+                <div>Halaman {{ pagination.page }} dari {{ pagination.pages }} (Total {{ pagination.total }} entri)</div>
+                <div class="flex items-center space-x-1">
+                    {% if pagination.has_prev %}
+                        <a href="{{ url_for('evaluations.audit_logs', page=pagination.prev_num, action=action_filter) }}" class="px-2.5 py-1 bg-white border border-slate-300 rounded text-slate-700 hover:bg-slate-50">Sebelumnya</a>
+                    {% endif %}
+                    {% if pagination.has_next %}
+                        <a href="{{ url_for('evaluations.audit_logs', page=pagination.next_num, action=action_filter) }}" class="px-2.5 py-1 bg-white border border-slate-300 rounded text-slate-700 hover:bg-slate-50">Selanjutnya</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

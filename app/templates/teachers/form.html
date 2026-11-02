@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Ubah Data Guru' if teacher else 'Tambah Guru Baru' }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6 mt-2">
+    
+    <div class="flex items-center justify-between">
+        <div>
+            <a href="{{ url_for('teachers.index') }}" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center mb-1">
+                <i class="fa-solid fa-arrow-left mr-1.5"></i> Kembali ke Data Guru
+            </a>
+            <h1 class="text-2xl font-black text-slate-900">{{ 'Ubah Data Guru' if teacher else 'Pendaftaran Guru Baru' }}</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Kelola data profil guru dan tentukan materi UKG yang diwajibkan untuk guru ini.</p>
+        </div>
+    </div>
+
+    <form method="POST" class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 sm:p-8 space-y-6">
+        
+        <div class="border-b border-slate-100 pb-4">
+            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Informasi Profil Guru</h2>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div>
+                <label for="name" class="block text-xs font-semibold text-slate-700 mb-1.5">Nama Lengkap Guru <span class="text-rose-500">*</span></label>
+                <input type="text" id="name" name="name" required 
+                       value="{{ teacher.name if teacher else form_data.get('name', '') }}"
+                       placeholder="Contoh: Budi Santoso, S.Kom."
+                       class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            </div>
+
+            <div>
+                <label for="nip" class="block text-xs font-semibold text-slate-700 mb-1.5">Nomor Identitas Guru / NIP <span class="text-rose-500">*</span></label>
+                <input type="text" id="nip" name="nip" required 
+                       value="{{ teacher.nip if teacher else form_data.get('nip', '') }}"
+                       placeholder="Contoh: 198801122019031002"
+                       class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                <p class="text-[10px] text-slate-400 mt-1">Harus unik untuk mencegah data duplikat.</p>
+            </div>
+
+            <div>
+                <label for="school_origin" class="block text-xs font-semibold text-slate-700 mb-1.5">Asal Sekolah / Unit <span class="text-rose-500">*</span></label>
+                <input type="text" id="school_origin" name="school_origin" required 
+                       value="{{ teacher.school_origin if teacher else form_data.get('school_origin', '') }}"
+                       placeholder="Contoh: SMP Katolik Santo Yakobus"
+                       class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            </div>
+
+            <div>
+                <label for="grade_level" class="block text-xs font-semibold text-slate-700 mb-1.5">Jenjang Pendidikan <span class="text-rose-500">*</span></label>
+                {% set g_val = teacher.grade_level if teacher else form_data.get('grade_level', 'SMP') %}
+                <select id="grade_level" name="grade_level" required
+                        class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    <option value="TK" {% if g_val == 'TK' %}selected{% endif %}>TK</option>
+                    <option value="SD" {% if g_val == 'SD' %}selected{% endif %}>SD</option>
+                    <option value="SMP" {% if g_val == 'SMP' %}selected{% endif %}>SMP</option>
+                    <option value="SMA" {% if g_val == 'SMA' %}selected{% endif %}>SMA</option>
+                    <option value="SMK" {% if g_val == 'SMK' %}selected{% endif %}>SMK</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="classes_taught" class="block text-xs font-semibold text-slate-700 mb-1.5">Kelas yang Diajar</label>
+                <input type="text" id="classes_taught" name="classes_taught" 
+                       value="{{ teacher.classes_taught if teacher else form_data.get('classes_taught', '') }}"
+                       placeholder="Contoh: Kelas 7, 8, 9"
+                       class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            </div>
+
+            <div>
+                <label for="email" class="block text-xs font-semibold text-slate-700 mb-1.5">Alamat Email</label>
+                <input type="email" id="email" name="email" 
+                       value="{{ teacher.email if teacher else form_data.get('email', '') }}"
+                       placeholder="guru@sekolah.sch.id"
+                       class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            </div>
+        </div>
+
+        <!-- Pemetaan Materi UKG yang Diwajibkan -->
+        <div class="pt-4 border-t border-slate-100">
+            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-1">Materi UKG yang Diwajibkan</h2>
+            <p class="text-xs text-slate-500 mb-4">Centang kompetensi atau materi UKG yang wajib diselesaikan oleh guru ini. Kelulusan dinilai secara independen per materi.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-72 overflow-y-auto p-1">
+                {% for m in materials %}
+                    {% set is_checked = (m.id in current_mat_ids) if current_mat_ids is defined else false %}
+                    <label class="flex items-start p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-indigo-50/50 hover:border-indigo-200 cursor-pointer transition">
+                        <input type="checkbox" name="materials" value="{{ m.id }}" 
+                               {% if is_checked %}checked{% endif %}
+                               class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5">
+                        <div class="ml-3">
+                            <div class="flex items-center gap-1.5 mb-0.5">
+                                <span class="text-[10px] font-bold px-1.5 py-0.2 rounded {{ 'bg-blue-50 text-blue-700 border border-blue-200' if m.semester == 'Semester 1' else 'bg-purple-50 text-purple-700 border border-purple-200' }}">
+                                    {{ m.semester or 'Semester 1' }}
+                                </span>
+                                <span class="text-[11px] text-indigo-600 font-semibold">[{{ m.code }}]</span>
+                            </div>
+                            <span class="text-xs font-bold text-slate-900 block leading-tight">{{ m.title }}</span>
+                            <span class="text-[11px] text-slate-500">{{ m.grade_level }} ({{ m.class_level }})</span>
+                        </div>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% if teacher %}
+            <div class="pt-4 border-t border-slate-100 flex items-center">
+                <label class="flex items-center text-xs font-semibold text-slate-700 cursor-pointer">
+                    <input type="checkbox" name="is_active" value="1" {% if teacher.is_active %}checked{% endif %}
+                           class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                    <span class="ml-2">Status Guru Aktif</span>
+                </label>
+            </div>
+        {% endif %}
+
+        <div class="pt-6 border-t border-slate-100 flex items-center justify-end space-x-3">
+            <a href="{{ url_for('teachers.index') }}" class="px-4 py-2.5 border border-slate-300 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 transition">
+                Batal
+            </a>
+            <button type="submit" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/25 transition">
+                {{ 'Simpan Perubahan' if teacher else 'Daftarkan Guru' }}
+            </button>
+        </div>
+    </form>
+
+</div>
+{% endblock %}

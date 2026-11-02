@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Data Guru{% endblock %}
+
+{% block content %}
+<div class="space-y-6 mt-2">
+    
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Manajemen Data Guru</h1>
+            <p class="text-sm text-slate-500 mt-1">Daftar guru terdaftar beserta pemetaan materi UKG yang diwajibkan.</p>
+        </div>
+        <div>
+            <a href="{{ url_for('teachers.create') }}" class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md shadow-indigo-600/25 transition">
+                <i class="fa-solid fa-user-plus mr-2"></i> Tambah Data Guru
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+        <form method="GET" action="{{ url_for('teachers.index') }}" class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div class="sm:col-span-2 relative">
+                <input type="text" name="q" value="{{ search }}" placeholder="Cari nama guru, NIP, atau sekolah..."
+                       class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+            </div>
+            <div>
+                <select name="grade" class="w-full py-2 px-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    <option value="">Semua Jenjang</option>
+                    <option value="TK" {% if grade == 'TK' %}selected{% endif %}>TK</option>
+                    <option value="SD" {% if grade == 'SD' %}selected{% endif %}>SD</option>
+                    <option value="SMP" {% if grade == 'SMP' %}selected{% endif %}>SMP</option>
+                    <option value="SMA" {% if grade == 'SMA' %}selected{% endif %}>SMA</option>
+                    <option value="SMK" {% if grade == 'SMK' %}selected{% endif %}>SMK</option>
+                </select>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button type="submit" class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl transition">
+                    Cari Guru
+                </button>
+                {% if search or grade %}
+                    <a href="{{ url_for('teachers.index') }}" class="text-xs text-rose-600 hover:text-rose-800 px-2 font-medium">Reset</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Table Card -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                    <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider">
+                        <th class="py-3.5 px-5">Nama Guru</th>
+                        <th class="py-3.5 px-4">NIP / Identitas</th>
+                        <th class="py-3.5 px-4">Asal Sekolah</th>
+                        <th class="py-3.5 px-4">Jenjang & Kelas</th>
+                        <th class="py-3.5 px-4">Materi Wajib</th>
+                        <th class="py-3.5 px-4 text-center">Status Kompetensi</th>
+                        <th class="py-3.5 px-5 text-right">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% if teachers %}
+                        {% for t in teachers %}
+                            {% set sum = t.get_competency_summary() %}
+                            <tr class="hover:bg-slate-50/80 transition">
+                                <td class="py-3.5 px-5">
+                                    <a href="{{ url_for('teachers.detail', teacher_id=t.id) }}" class="font-bold text-slate-900 hover:text-indigo-600 transition">
+                                        {{ t.name }}
+                                    </a>
+                                    {% if t.email %}
+                                        <div class="text-[11px] text-slate-400 mt-0.5">{{ t.email }}</div>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3.5 px-4 font-mono font-medium text-slate-600">
+                                    {{ t.nip }}
+                                </td>
+                                <td class="py-3.5 px-4 font-medium text-slate-800">
+                                    {{ t.school_origin }}
+                                </td>
+                                <td class="py-3.5 px-4">
+                                    <span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                        {{ t.grade_level }}
+                                    </span>
+                                    <span class="text-slate-500 text-[11px] ml-1">{{ t.classes_taught }}</span>
+                                </td>
+                                <td class="py-3.5 px-4">
+                                    <span class="font-semibold text-slate-800">{{ sum.total }} Materi</span>
+                                    <div class="text-[10px] text-slate-400 mt-0.5">
+                                        {{ sum.passed }} Lulus &bull; {{ sum.not_passed }} Tidak &bull; {{ sum.pending }} Pending
+                                    </div>
+                                </td>
+                                <td class="py-3.5 px-4 text-center">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border {{ sum.badge_class }}">
+                                        {{ sum.label }}
+                                    </span>
+                                </td>
+                                <td class="py-3.5 px-5 text-right whitespace-nowrap">
+                                    <div class="inline-flex items-center space-x-1.5">
+                                        <a href="{{ url_for('teachers.detail', teacher_id=t.id) }}" title="Lihat Profil & Rincian" class="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('teachers.edit', teacher_id=t.id) }}" title="Ubah Data" class="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="py-10 text-center text-slate-400">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-2 text-xl text-slate-400">
+                                    <i class="fa-solid fa-user-slash"></i>
+                                </div>
+                                <p class="font-semibold text-slate-700">Data Guru Tidak Ditemukan</p>
+                                <p class="text-xs text-slate-400 mt-0.5">Silakan tambahkan data guru baru atau sesuaikan kata kunci pencarian.</p>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if pagination and pagination.pages > 1 %}
+            <div class="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-500">
+                <div>Halaman {{ pagination.page }} dari {{ pagination.pages }} (Total {{ pagination.total }} guru)</div>
+                <div class="flex items-center space-x-1">
+                    {% if pagination.has_prev %}
+                        <a href="{{ url_for('teachers.index', page=pagination.prev_num, q=search, grade=grade) }}" class="px-2.5 py-1 bg-white border border-slate-300 rounded text-slate-700 hover:bg-slate-50">Sebelumnya</a>
+                    {% endif %}
+                    {% if pagination.has_next %}
+                        <a href="{{ url_for('teachers.index', page=pagination.next_num, q=search, grade=grade) }}" class="px-2.5 py-1 bg-white border border-slate-300 rounded text-slate-700 hover:bg-slate-50">Selanjutnya</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

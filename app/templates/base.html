@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistem UKG Berbasis AI{% endblock %} - Panel Admin</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Alpine.js CDN -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body class="h-full flex text-slate-800 antialiased" x-data="{ sidebarOpen: false }">
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div x-show="sidebarOpen" 
+         x-transition:enter="transition-opacity ease-linear duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity ease-linear duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="sidebarOpen = false" 
+         class="fixed inset-0 z-40 bg-slate-900/60 lg:hidden" x-cloak></div>
+
+    <!-- Sidebar Navigation -->
+    <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'" 
+           class="fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-slate-300 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static flex flex-col shadow-2xl">
+        
+        <!-- Brand Header -->
+        <div class="h-18 flex items-center px-6 py-5 border-b border-slate-800 bg-slate-950/60">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-indigo-500/30">
+                <i class="fa-solid fa-graduation-cap"></i>
+            </div>
+            <div class="ml-3.5">
+                <h1 class="text-base font-bold text-white tracking-tight leading-tight">UKG Assessment</h1>
+                <p class="text-xs text-indigo-400 font-medium">AI Evaluator Engine</p>
+            </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+            <div class="px-3 pb-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Navigasi Utama</div>
+
+            <a href="{{ url_for('dashboard.index') }}" 
+               class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all {% if request.endpoint == 'dashboard.index' %}bg-indigo-600 text-white shadow-md shadow-indigo-600/30{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                <i class="fa-solid fa-gauge-high w-5 text-center mr-3 {% if request.endpoint == 'dashboard.index' %}text-white{% else %}text-slate-400{% endif %}"></i>
+                Dashboard UKG
+            </a>
+
+            <a href="{{ url_for('submissions.upload') }}" 
+               class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all {% if request.endpoint == 'submissions.upload' %}bg-indigo-600 text-white shadow-md shadow-indigo-600/30{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                <i class="fa-solid fa-cloud-arrow-up w-5 text-center mr-3 {% if request.endpoint == 'submissions.upload' %}text-white{% else %}text-indigo-400{% endif %}"></i>
+                Upload Proyek Guru
+            </a>
+
+            <a href="{{ url_for('submissions.index') }}" 
+               class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all {% if request.endpoint == 'submissions.index' %}bg-indigo-600 text-white shadow-md shadow-indigo-600/30{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                <i class="fa-solid fa-list-check w-5 text-center mr-3 {% if request.endpoint == 'submissions.index' %}text-white{% else %}text-slate-400{% endif %}"></i>
+                Daftar Proyek & Hasil
+            </a>
+
+            <div class="pt-5 px-3 pb-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Master Standar & Guru</div>
+
+            <a href="{{ url_for('teachers.index') }}" 
+               class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all {% if 'teachers' in request.endpoint %}bg-indigo-600 text-white shadow-md shadow-indigo-600/30{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                <i class="fa-solid fa-chalkboard-user w-5 text-center mr-3 {% if 'teachers' in request.endpoint %}text-white{% else %}text-slate-400{% endif %}"></i>
+                Data Guru
+            </a>
+
+            <a href="{{ url_for('rubrics.index') }}" 
+               class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all {% if 'rubrics' in request.endpoint %}bg-indigo-600 text-white shadow-md shadow-indigo-600/30{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                <i class="fa-solid fa-scale-balanced w-5 text-center mr-3 {% if 'rubrics' in request.endpoint %}text-white{% else %}text-slate-400{% endif %}"></i>
+                Rubrik & Kriteria UKG
+            </a>
+
+            <a href="{{ url_for('materials.index') }}" 
+               class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all {% if 'materials' in request.endpoint %}bg-indigo-600 text-white shadow-md shadow-indigo-600/30{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                <i class="fa-solid fa-book-bookmark w-5 text-center mr-3 {% if 'materials' in request.endpoint %}text-white{% else %}text-slate-400{% endif %}"></i>
+                Materi UKG
+            </a>
+
+            <div class="pt-5 px-3 pb-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Laporan & Audit</div>
+
+            <a href="{{ url_for('evaluations.rekap') }}" 
+               class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all {% if request.endpoint == 'evaluations.rekap' %}bg-indigo-600 text-white shadow-md shadow-indigo-600/30{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                <i class="fa-solid fa-chart-pie w-5 text-center mr-3 {% if request.endpoint == 'evaluations.rekap' %}text-white{% else %}text-slate-400{% endif %}"></i>
+                Rekap Kompetensi
+            </a>
+
+            <a href="{{ url_for('evaluations.audit_logs') }}" 
+               class="flex items-center px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all {% if request.endpoint == 'evaluations.audit_logs' %}bg-indigo-600 text-white shadow-md shadow-indigo-600/30{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}">
+                <i class="fa-solid fa-clock-rotate-left w-5 text-center mr-3 {% if request.endpoint == 'evaluations.audit_logs' %}text-white{% else %}text-slate-400{% endif %}"></i>
+                Audit Trail Log
+            </a>
+        </nav>
+
+        <!-- Current User Profile in Sidebar -->
+        <div class="p-4 border-t border-slate-800 bg-slate-950/40">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3 overflow-hidden">
+                    <div class="w-9 h-9 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-sm">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </div>
+                    <div class="truncate">
+                        <p class="text-sm font-semibold text-white truncate">{{ current_user.name if current_user.is_authenticated else 'Administrator' }}</p>
+                        <p class="text-xs text-emerald-400 flex items-center">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block mr-1.5"></span> Role Admin
+                        </p>
+                    </div>
+                </div>
+                <a href="{{ url_for('auth.logout') }}" title="Keluar dari sistem" class="text-slate-400 hover:text-rose-400 transition-colors p-2 rounded-lg hover:bg-slate-800">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Container -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        
+        <!-- Topbar Header -->
+        <header class="h-16 bg-white border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+            <div class="flex items-center">
+                <button @click="sidebarOpen = !sidebarOpen" class="text-slate-600 hover:text-slate-900 focus:outline-none lg:hidden mr-4 p-2 rounded-lg hover:bg-slate-100">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+                <div class="hidden sm:block">
+                    <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200">
+                        <i class="fa-solid fa-shield-halved mr-1"></i> Mode Tunggal: Khusus Administrator
+                    </span>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <a href="{{ url_for('submissions.upload') }}" 
+                   class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all shadow-indigo-600/20">
+                    <i class="fa-solid fa-plus mr-1.5"></i> Upload Proyek Baru
+                </a>
+            </div>
+        </header>
+
+        <!-- Flash Alert Messages -->
+        <div class="px-4 sm:px-8 pt-6">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% set alert_classes = {
+                            'success': 'bg-emerald-50 border-emerald-300 text-emerald-800',
+                            'danger': 'bg-rose-50 border-rose-300 text-rose-800',
+                            'warning': 'bg-amber-50 border-amber-300 text-amber-800',
+                            'info': 'bg-blue-50 border-blue-300 text-blue-800'
+                        } %}
+                        <div class="mb-4 flex items-center justify-between p-4 rounded-xl border {{ alert_classes.get(category, 'bg-slate-50 border-slate-300 text-slate-800') }} shadow-xs" x-data="{ show: true }" x-show="show">
+                            <div class="flex items-center">
+                                <i class="fa-solid {% if category == 'success' %}fa-circle-check text-emerald-500{% elif category == 'danger' %}fa-circle-xmark text-rose-500{% elif category == 'warning' %}fa-triangle-exclamation text-amber-500{% else %}fa-circle-info text-blue-500{% endif %} text-lg mr-3"></i>
+                                <span class="text-sm font-medium">{{ message }}</span>
+                            </div>
+                            <button @click="show = false" class="text-slate-400 hover:text-slate-600 ml-4">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- Main Body Content -->
+        <main class="flex-1 px-4 sm:px-8 pb-12">
+            {% block content %}{% endblock %}
+        </main>
+
+        <!-- Footer -->
+        <footer class="py-4 px-8 border-t border-slate-200 text-center text-xs text-slate-500 bg-white">
+            Sistem Uji Kompetensi Guru (UKG) Berbasis AI &copy; 2026. Evaluator Proyek Otomatis & Terstruktur.
+        </footer>
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
