@@ -28,7 +28,7 @@ class AIEvaluationResponse(BaseModel):
 class AIEvaluatorService:
     def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
         self.api_key = api_key or current_app.config.get('GEMINI_API_KEY', '')
-        self.model = model or current_app.config.get('GEMINI_MODEL', 'gemini-2.0-flash')
+        self.model = model or current_app.config.get('GEMINI_MODEL', 'gemini-3-flash-preview')
 
     def evaluate_submission(
         self,
