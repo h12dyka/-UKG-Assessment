@@ -1,5 +1,5 @@
 import io
-from flask import send_file
+from flask import json, send_file
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -53,7 +53,11 @@ def run_evaluation(submission_id):
         rubric_version=active_version,
         project_title=submission.project_title,
         extracted_content=proj_file.extracted_text or '',
-        file_metadata={'type': proj_file.file_type, 'extension': proj_file.original_filename.split('.')[-1].lower()}
+        file_metadata=(
+            json.loads(proj_file.parser_metadata) 
+            if proj_file.parser_metadata and proj_file.parser_metadata.startswith('{') 
+            else {'type': proj_file.file_type, 'extension': proj_file.original_filename.split('.')[-1].lower()}
+        )
     )
 
     if eval_res.get('success'):

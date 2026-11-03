@@ -28,8 +28,16 @@ class FileParserManager:
             res = self.excel_parser.parse(file_path)
         elif ext in ['pdf', 'docx', 'doc', 'pptx', 'ppt']:
             res = self.doc_parser.parse(file_path)
-        elif ext in ['sb3', 'sb']:
+        elif ext in ['sb3', 'sb2', 'sb']:
             res = self.scratch_parser.parse(file_path)
+        elif ext == 'aia':
+            res = self._parse_app_inventor_aia(file_path)
+        elif ext == 'apk':
+            # Parser Khusus Paket Aplikasi Android
+            res = self._parse_android_apk(file_path)
+        elif ext in ['blend', 'blend1', 'blend2']:
+            # Parser Khusus Blender 3D Project & Backup
+            res = self._parse_blender_project(file_path)
         elif ext in ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'svg']:
             res = self.image_parser.parse(file_path)
         elif ext in ['cpp', 'c', 'pas', 'py', 'java', 'js', 'html', 'css', 'txt', 'sql', 'json', 'xml']:
@@ -140,3 +148,121 @@ class FileParserManager:
                 'metadata': {'type': 'zip'},
                 'error': str(e)
             }
+    def _parse_app_inventor_aia(self, file_path: str) -> Dict[str, Any]:
+        """
+        Membedah berkas proyek MIT App Inventor (.aia)
+        """
+        try:
+            if not zipfile.is_zipfile(file_path):
+                return {'success': False, 'summary': "Berkas .aia bukan arsip App Inventor valid.", 'extracted_content': '', 'metadata': {'type': 'aia'}, 'error': 'Bukan zip valid'}
+
+            with zipfile.ZipFile(file_path, 'r') as zf:
+                namelist = zf.namelist()
+                screens = [Path(n).stem for n in namelist if n.endswith('.scm')]
+                block_files = [n for n in namelist if n.endswith('.bky')]
+                assets = [n for n in namelist if '/assets/' in n and not n.endswith('/')]
+
+            total_screens = len(screens)
+            total_blocks = len(block_files)
+
+            content = (
+                f"=== PROYEK MIT APP INVENTOR (.AIA) ===\n"
+                f"Nama Berkas: {Path(file_path).name}\n"
+                f"Jumlah Layar (Screens): {total_screens} ({', '.join(screens) if screens else 'Tidak ada'})\n"
+                f"Jumlah Modul Blok Logika: {total_blocks}\n"
+                f"Jumlah Aset Media: {len(assets)}\n"
+                f"Status: Proyek aplikasi mobile berhasil diverifikasi."
+            )
+
+            return {
+                'success': True,
+                'summary': f"Proyek App Inventor: {total_screens} Layar, {total_blocks} Modul Blok, {len(assets)} Aset.",
+                'extracted_content': content,
+                'metadata': {
+                    'type': 'app_inventor',
+                    'extension': 'aia',
+                    'total_screens': total_screens,
+                    'screens': screens,
+                    'total_blocks': total_blocks,
+                    'total_assets': len(assets)
+                },
+                'error': None
+            }
+        except Exception as e:
+            return {'success': False, 'summary': f"Gagal membaca .aia: {str(e)}", 'extracted_content': '', 'metadata': {'type': 'aia'}, 'error': str(e)}
+
+    def _parse_blender_project(self, file_path: str) -> Dict[str, Any]:
+        """Membaca header dan validasi proyek Blender 3D (.blend)"""
+        try:
+            size_mb = os.path.getsize(file_path) / (1024 * 1024)
+            with open(file_path, 'rb') as f:
+                header = f.read(12)
+
+            # Validasi Magic Header Blender resmi (BLENDER_v... atau BLENDER-v...)
+            is_valid_blend = header.startswith(b'BLENDER')
+            version_str = "Tidak diketahui"
+            if is_valid_blend and len(header) >= 12:
+                version_raw = header[9:12].decode('ascii', errors='ignore')
+                version_str = f"v{version_raw[0]}.{version_raw[1:]}" if len(version_raw) == 3 else "Standar"
+
+            content = (
+                f"=== BERKAS PROYEK BLENDER 3D (.BLEND) ===\n"
+                f"Nama Berkas: {Path(file_path).name}\n"
+                f"Validasi Format: {'Resmi Blender Binary File' if is_valid_blend else 'Header Tidak Valid'}\n"
+                f"Versi Blender: {version_str}\n"
+                f"Ukuran Berkas: {size_mb:.2f} MB\n"
+                f"Status: Proyek 3D Modeling/Animasi terverifikasi."
+            )
+
+            return {
+                'success': True,
+                'summary': f"Proyek Blender 3D ({version_str}), Ukuran: {size_mb:.2f} MB.",
+                'extracted_content': content,
+                'metadata': {
+                    'type': 'blender_3d',
+                    'extension': Path(file_path).suffix.lower().replace('.', ''),
+                    'is_valid_header': is_valid_blend,
+                    'blender_version': version_str,
+                    'size_mb': round(size_mb, 2)
+                },
+                'error': None
+            }
+        except Exception as e:
+            return {'success': False, 'summary': f"Gagal membaca file Blender: {str(e)}", 'extracted_content': '', 'metadata': {'type': 'blender_3d'}, 'error': str(e)}
+
+    def _parse_android_apk(self, file_path: str) -> Dict[str, Any]:
+        """Membaca validasi paket aplikasi Android (.apk)"""
+        try:
+            size_mb = os.path.getsize(file_path) / (1024 * 1024)
+            is_valid_apk = False
+            has_dex = False
+
+            if zipfile.is_zipfile(file_path):
+                with zipfile.ZipFile(file_path, 'r') as zf:
+                    namelist = zf.namelist()
+                    is_valid_apk = 'AndroidManifest.xml' in namelist
+                    has_dex = any(n.endswith('.dex') for n in namelist)
+
+            content = (
+                f"=== PAKET APLIKASI ANDROID (.APK) ===\n"
+                f"Nama Berkas: {Path(file_path).name}\n"
+                f"Validasi Paket: {'Paket Android APK Sah (AndroidManifest terdeteksi)' if is_valid_apk else 'Arsip APK Tidak Utuh'}\n"
+                f"Kode Terkompilasi: {'Tersedia (.dex aktif)' if has_dex else 'Tidak ditemukan'}\n"
+                f"Ukuran Berkas: {size_mb:.2f} MB"
+            )
+
+            return {
+                'success': True,
+                'summary': f"Aplikasi Android (.apk), Ukuran: {size_mb:.2f} MB, Valid: {is_valid_apk}.",
+                'extracted_content': content,
+                'metadata': {
+                    'type': 'android_apk',
+                    'extension': 'apk',
+                    'is_valid_apk': is_valid_apk,
+                    'has_dex': has_dex,
+                    'size_mb': round(size_mb, 2)
+                },
+                'error': None
+            }
+        except Exception as e:
+            return {'success': False, 'summary': f"Gagal membaca APK: {str(e)}", 'extracted_content': '', 'metadata': {'type': 'android_apk'}, 'error': str(e)}

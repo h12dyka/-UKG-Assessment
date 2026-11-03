@@ -75,10 +75,13 @@ class Config:
         'xlsx', 'xls', 'csv',
         'pdf', 'docx', 'doc',
         'pptx', 'ppt',
-        'sb3', 'sb',
+        'sb3', 'sb2', 'sb',
+        'aia', 'apk',
+        'blend', 'blend1', 'blend2',
         'cpp', 'c', 'pas', 'py', 'java', 'js', 'html', 'css', 'txt',
         'png', 'jpg', 'jpeg', 'webp',
-        'zip'
+        'zip', 'rar', '7z',
+        'mp4', 'avi', 'mov', 'mkv'
     }
 
     # AI Configuration

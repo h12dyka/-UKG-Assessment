@@ -65,8 +65,14 @@ class ScoringEngine:
         # 2. Tentukan status kelulusan berdasarkan aturan backend
         passing_grade = float(rubric.passing_grade)
         has_sufficient = ai_result_data.has_sufficient_evidence
+        is_valid_project = getattr(ai_result_data, 'is_valid_project', True)
 
-        if not has_sufficient:
+        # Cek jika berkas didiskualifikasi oleh Gatekeeper (Bukan Proyek / Nilai 0)
+        if not is_valid_project or final_calculated_score == 0.0:
+            status = 'not_passed'
+            rejection = getattr(ai_result_data, 'rejection_reason', '') or "Berkas yang diunggah tidak teridentifikasi sebagai proyek yang sesuai (Bukan Proyek / Tidak Relevan)."
+            status_reason = f"DISKUALIFIKASI (BELUM LULUS): {rejection}"
+        elif not has_sufficient:
             status = 'pending_admin_review'
             status_reason = "Bukti dalam berkas proyek dinilai belum memadai atau tidak sesuai spesifikasi penugasan."
         elif mandatory_failed:
