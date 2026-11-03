@@ -79,7 +79,25 @@ def upload():
         if not teacher_id or not material_id or not project_title:
             flash("Mohon lengkapi Guru, Materi UKG, dan Judul Proyek.", 'warning')
             return render_template('submissions/upload.html', teachers=teachers, materials=materials, recent_submissions=recent_submissions)
+        
+        teacher = Teacher.query.get(teacher_id)
+        material = UKGMaterial.query.get(material_id)
 
+        if not teacher or not material:
+            flash("Data Guru atau Materi UKG tidak valid.", 'danger')
+            return render_template('submissions/upload.html', teachers=teachers, materials=materials, recent_submissions=recent_submissions)
+
+        # VALIDASI KETAT JENJANG GURU VS JENJANG MATERI
+        t_grade = (teacher.grade_level or '').strip().upper()
+        m_grade = (material.grade_level or '').strip().upper()
+
+        if t_grade and m_grade and t_grade != m_grade:
+            flash(
+                f"Validasi Gagal: Ketidaksesuaian Jenjang! Guru {teacher.name} terdaftar untuk jenjang {t_grade}, "
+                f"TIDAK DAPAT mengumpulkan proyek untuk materi jenjang {m_grade} ({material.title}).",
+                'danger'
+            )
+            return render_template('submissions/upload.html', teachers=teachers, materials=materials, recent_submissions=recent_submissions)
         if 'project_file' not in request.files:
             flash("Tidak ada berkas yang dipilih. Silakan pilih berkas proyek.", 'danger')
             return render_template('submissions/upload.html', teachers=teachers, materials=materials, recent_submissions=recent_submissions)
@@ -210,10 +228,17 @@ def upload():
 def get_teacher_materials(teacher_id):
     teacher = Teacher.query.get_or_404(teacher_id)
     comps = teacher.required_competencies
+    t_grade = (teacher.grade_level or '').strip().upper()
 
     materials_data = []
     for c in comps:
         mat = c.material
+        m_grade = (mat.grade_level or '').strip().upper()
+        
+        # PENTING: Hanya masukkan materi yang jenjangnya SAMA dengan jenjang guru
+        if t_grade and m_grade and t_grade != m_grade:
+            continue
+
         rubric = Rubric.query.filter_by(material_id=mat.id).first()
         has_active_rubric = bool(rubric and rubric.active_version)
 
@@ -231,6 +256,31 @@ def get_teacher_materials(teacher_id):
             'rubric_title': rubric.title if rubric else None,
             'allowed_file_types': rubric.allowed_file_types if rubric else ''
         })
+
+    # Jika guru belum dipetakan secara manual ke materi, otomatis tampilkan seluruh materi aktif untuk jenjangnya
+    if not materials_data and t_grade:
+        matching_materials = UKGMaterial.query.filter(
+            UKGMaterial.is_active == True,
+            UKGMaterial.grade_level.ilike(t_grade)
+        ).order_by(UKGMaterial.class_level, UKGMaterial.title).all()
+
+        for mat in matching_materials:
+            rubric = Rubric.query.filter_by(material_id=mat.id).first()
+            has_active_rubric = bool(rubric and rubric.active_version)
+            materials_data.append({
+                'id': mat.id,
+                'code': mat.code,
+                'title': mat.title,
+                'grade_level': mat.grade_level,
+                'class_level': mat.class_level,
+                'semester': getattr(mat, 'semester', 'Semester 1') or 'Semester 1',
+                'academic_year': getattr(mat, 'academic_year', '2025/2026') or '2025/2026',
+                'current_status': 'not_started',
+                'latest_score': None,
+                'has_active_rubric': has_active_rubric,
+                'rubric_title': rubric.title if rubric else None,
+                'allowed_file_types': rubric.allowed_file_types if rubric else ''
+            })
 
     teacher_subs = Submission.query.filter_by(teacher_id=teacher.id).order_by(Submission.created_at.desc()).all()
     existing_submissions = []
